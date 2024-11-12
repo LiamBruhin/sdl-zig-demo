@@ -7,9 +7,11 @@ const vec2D = struct {
     x: f64,
     y: f64,
     fn normalize(self: *vec2D) void {
-        const magnitude = @sqrt(self.x * self.x + self.y * self.y);
-        self.x /= magnitude;
-        self.y /= magnitude;
+        if ((self.x * self.x + self.y * self.y) != 0) {
+            const magnitude = @sqrt(self.x * self.x + self.y * self.y);
+            self.x /= magnitude;
+            self.y /= magnitude;
+        }
     }
 };
 
@@ -18,7 +20,7 @@ const window_height: i32 = 1000;
 const padding = 5;
 const playerSize = 30;
 
-const speed = 0.1;
+const speed = 0.5;
 
 var pos = vec2D{ .x = 500, .y = 500 };
 var vel = vec2D{ .x = 0, .y = 0 };
@@ -61,16 +63,20 @@ pub fn main() !void {
     while (running) {
         pollEvents(&running);
 
+        vel.normalize();
         pos.x += vel.x * speed;
         pos.y += vel.y * speed;
 
-        _ = c.SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 255);
-        _ = c.SDL_RenderClear(Renderer);
-        drawMap(Renderer);
-        drawPlayer(Renderer);
-
-        c.SDL_RenderPresent(Renderer);
+        render(Renderer);
     }
+}
+
+pub fn render(Renderer: ?*c.SDL_Renderer) void {
+    _ = c.SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 255);
+    _ = c.SDL_RenderClear(Renderer);
+    drawMap(Renderer);
+    drawPlayer(Renderer);
+    c.SDL_RenderPresent(Renderer);
 }
 
 pub fn pollEvents(running: *bool) void {
