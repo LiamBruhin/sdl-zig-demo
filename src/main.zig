@@ -18,9 +18,9 @@ const vec2D = struct {
 const window_width: i32 = 1000;
 const window_height: i32 = 1000;
 const padding = 5;
-const playerSize = 30;
+const playerSize: f64 = 30;
 
-const speed = 0.5;
+const speed = 10;
 
 var pos = vec2D{ .x = 500, .y = 500 };
 var vel = vec2D{ .x = 0, .y = 0 };
@@ -37,6 +37,8 @@ var map = [10][10]i8{
     [_]i8{ 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     [_]i8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
 };
+
+const blockSize = window_width / map.len;
 
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -62,6 +64,41 @@ pub fn main() !void {
 
     while (running) {
         pollEvents(&running);
+
+        const col: usize = @intFromFloat(@ceil(pos.x / blockSize));
+        const colF: usize = @intFromFloat(@floor(pos.x / blockSize));
+        const row: usize = @intFromFloat(@floor(pos.y / blockSize));
+        const rowC: usize = @intFromFloat(@ceil(pos.y / blockSize));
+
+        if (col < map.len and col > 0) {
+            // NOTE: right case
+            var wallPos: f64 = @floatFromInt(blockSize * col);
+            var playerEdge: f64 = pos.x + (playerSize / 2);
+            if ((map[row][col] == 1) and (playerEdge > wallPos)) {
+                pos.x = wallPos - (playerSize / 2);
+            }
+
+            // NOTE: left case
+            wallPos = @floatFromInt(blockSize * (col - 1));
+            playerEdge = pos.x - (playerSize / 2);
+            if ((map[row][col - 2] == 1) and (playerEdge < wallPos)) {
+                pos.x = wallPos + (playerSize / 2);
+            }
+
+            //NOTE: Down
+            wallPos = @floatFromInt(blockSize * (rowC));
+            playerEdge = pos.y + (playerSize / 2);
+            if ((map[rowC][colF] == 1) and (playerEdge > wallPos)) {
+                pos.y = wallPos - (playerSize / 2);
+            }
+
+            //NOTE: Up
+            wallPos = @floatFromInt(blockSize * (rowC - 1));
+            playerEdge = pos.y - (playerSize / 2);
+            if ((map[rowC - 2][colF] == 1) and (playerEdge < wallPos)) {
+                pos.y = wallPos + (playerSize / 2);
+            }
+        }
 
         vel.normalize();
         pos.x += vel.x * speed;
@@ -100,7 +137,10 @@ pub fn pollEvents(running: *bool) void {
                     c.SDL_SCANCODE_D => {
                         vel.x = 1;
                     },
-                    else => {},
+                    else => {
+                        vel.x = 0;
+                        vel.y = 0;
+                    },
                 }
             },
             c.SDL_KEYUP => {
@@ -150,10 +190,12 @@ pub fn drawMap(Renderer: ?*c.SDL_Renderer) void {
 pub fn drawPlayer(Renderer: ?*c.SDL_Renderer) void {
     _ = c.SDL_SetRenderDrawColor(Renderer, 235, 79, 52, 255);
     const player = c.SDL_Rect{
-        .y = @as(c_int, @intFromFloat(pos.y)) - playerSize / 2,
-        .x = @as(c_int, @intFromFloat(pos.x)) - playerSize / 2,
-        .h = @as(c_int, @intCast(playerSize)),
-        .w = @as(c_int, @intCast(playerSize)),
+        .y = @as(c_int, @intFromFloat(pos.y - playerSize / 2)),
+        .x = @as(c_int, @intFromFloat(pos.x - playerSize / 2)),
+        .h = @as(c_int, @intFromFloat(playerSize)),
+        .w = @as(c_int, @intFromFloat(playerSize)),
     };
     _ = c.SDL_RenderFillRect(Renderer, &player);
+    _ = c.SDL_SetRenderDrawColor(Renderer, 0, 0, 255, 255);
+    _ = c.SDL_RenderDrawPoint(Renderer, @as(c_int, @intFromFloat(pos.x)), @as(c_int, @intFromFloat(pos.y)));
 }
